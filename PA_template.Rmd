@@ -1,0 +1,108 @@
+---
+title: "Reproducible Research Peer Assignment 1"
+author: "Amelia"
+date: "1/31/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(cache=TRUE)
+```
+
+
+## Loading and preprocessing the data
+```{r preprocess, results="hide"}
+library(ggplot2)
+library(lubridate)
+library(dplyr)
+library(gridExtra)
+dat<- read.csv("activity.csv")
+```
+
+
+## What is mean total number of steps taken per day?
+```{r mean steps}
+# Calculate the total number of steps taken per day
+dailysteps<- aggregate(steps ~date,dat , sum, na.action = na.omit)
+
+# Make a histogram of the total number of steps taken each day
+qplot(dailysteps$steps,geom = "histogram", binwidth = 600, xlab = "Number of steps daily")
+
+# Calculate and report the mean and median of the total number of steps taken per day
+meansteps<- mean(dailysteps$steps)
+medsteps<- median(dailysteps$steps)
+```
+
+Mean total steps per day is `r meansteps`.
+
+Median total steps per day is `r medsteps`.
+
+## What is the average daily activity pattern?
+```{r avg daily pattern}
+# Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+intvstep<- aggregate(steps ~interval, dat , mean, na.action = na.omit)
+g<- ggplot(data = intvstep, aes(x = interval, y = steps, group = 1)) +
+    geom_line()
+print(g)
+maxstep<- intvstep$interval[which.max(intvstep$steps)]
+```
+
+The 5 min interval is `r maxstep`.
+
+## Imputing missing values
+```{r input missing values}
+# Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with ????????s)
+summary(dat)
+
+# Devise a strategy for filling in all of the missing values in the dataset.
+# Create a new dataset that is equal to the original dataset but with the missing data filled in.
+dat2<-dat
+for(n in 1:nrow(dat2)){
+  if(is.na(dat2$steps[n])){
+    dat2$steps[n] <- intvstep$steps[which(intvstep$interval == dat2$interval[n])]
+  }
+}
+summary(dat2)
+
+# Make a histogram of the total number of steps taken each day 
+dailysteps2<- aggregate(steps ~date,dat2 , sum, na.action = na.omit)
+qplot(dailysteps2$steps,geom = "histogram", binwidth = 600, xlab = "Number of steps daily")
+
+# Calculate and report the mean and median total number of steps taken per day. 
+meansteps2<- mean(dailysteps2$steps)
+medsteps2<- median(dailysteps2$steps)
+
+# Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+```
+
+Total number of missing values in the dataset = 2304
+
+Mean total steps per day (missing values corrected) is `r meansteps2`.
+
+Median total steps per day (missing values corrected) is `r medsteps2`.
+
+The mean total steps per day is the same but the median total steps per day has a slight shift (10765 (original) vs 10766.19(corrected)).
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+
+```{r activity patterns}
+# Create a new factor variable in the dataset with two levels - ???weekday??? and ???weekend??? indicating whether a given date is a weekday or weekend day.
+dat2<- mutate(dat2, weekday =  weekdays(ymd(dat2$date)))
+weekdaydat<- filter(dat2, weekday == "Monday"| weekday == "Tuesday" |weekday == "Wednesday"|weekday == "Thursday"|weekday == "Friday")
+weekenddat<- filter(dat2, weekday == "Saturday"| weekday == "Sunday")
+
+# Make a panel plot containing a time series plot (i.e.type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+intvstepweekday<- aggregate(steps ~interval, weekdaydat , mean, na.action = na.omit)
+intvstepweekend<- aggregate(steps ~interval, weekenddat , mean, na.action = na.omit)
+i<- ggplot(data = intvstepweekday, aes(x = interval, y = steps, group = 1)) +
+    geom_line() +
+    ggtitle("Weekday") 
+j<- ggplot(data = intvstepweekend, aes(x = interval, y = steps, group = 1)) +
+    geom_line() +
+    ggtitle("Weekend") 
+grid.arrange(i, j, ncol=1, nrow =2)
+```
+
+
